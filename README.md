@@ -1,3 +1,7 @@
+# FORKED
+This fork has a small modification to allow multiple callbacks on the same topic.
+
+
 # SYNOPSIS
 A minimalist event emitter for `C++`.
 

@@ -9,7 +9,8 @@
 #include <map>
 
 class EventEmitter {
-  std::map<std::string, void*> events;
+  typedef std::vector<void*> triggerlist;  
+  std::map<std::string, triggerlist> events;
   std::map<std::string, bool> events_once;
 
   template <typename Callback> 
@@ -42,8 +43,9 @@ class EventEmitter {
     void on(const std::string& name, Callback cb) {
 
       auto it = events.find(name);
-      if (it != events.end()) {
-        throw new std::runtime_error("duplicate listener");
+      if (it == events.end()) {
+        triggerlist newList;
+        events[name] = std::move(newList);
       }
 
       if (++this->_listeners >= this->maxListeners) {
@@ -56,7 +58,8 @@ class EventEmitter {
 
       auto f = to_function(cb);
       auto fn = new decltype(f)(to_function(cb));
-      events[name] = static_cast<void*>(fn);
+      events[name].push_back(static_cast<void*>(fn));
+      //events[name] = static_cast<void*>(fn);
     }
 
     template <typename Callback>
@@ -91,10 +94,10 @@ class EventEmitter {
 
       auto it = events.find(name);
       if (it != events.end()) {
-
-        auto cb = events.at(name);
-        auto fp = static_cast<std::function<void(Args...)>*>(cb);
-        (*fp)(args...);
+        for (auto & element :  events.at(name)) {
+            auto fp = static_cast<std::function<void(Args...)>*>(element);
+            (*fp)(args...);
+        }
       }
 
       auto once = events_once.find(name);
@@ -103,7 +106,9 @@ class EventEmitter {
       }
     }
 
-    EventEmitter(void) {}
+    EventEmitter(int max_listeners = 100) {
+      this->maxListeners = max_listeners;
+    }
 
     ~EventEmitter (void) {
       events.clear();
